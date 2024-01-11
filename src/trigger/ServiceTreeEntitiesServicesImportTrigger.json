@@ -1,0 +1,33 @@
+{
+	"name": "ServiceTreeEntitiesServicesImportTrigger",
+	"properties": {
+		"description": "Runs the import for Service Entities from Service Tree",
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "entities_services_import_pipeline",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Day",
+				"interval": 1,
+				"startTime": "2023-12-21T02:06:00Z",
+				"timeZone": "UTC",
+				"schedule": {
+					"minutes": [
+						25
+					],
+					"hours": [
+						9
+					]
+				}
+			}
+		}
+	}
+}

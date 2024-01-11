@@ -1,0 +1,84 @@
+{
+	"name": "CbmInternalTeamsLog",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "CbmInternalConnectionService",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureDataExplorerTable",
+		"schema": [
+			{
+				"name": "TeamId",
+				"type": "string"
+			},
+			{
+				"name": "Level",
+				"type": "string"
+			},
+			{
+				"name": "Name",
+				"type": "string"
+			},
+			{
+				"name": "BusinessOwners",
+				"type": "string"
+			},
+			{
+				"name": "Status",
+				"type": "string"
+			},
+			{
+				"name": "Tags",
+				"type": "string"
+			},
+			{
+				"name": "DivisionId",
+				"type": "string"
+			},
+			{
+				"name": "DivisionName",
+				"type": "string"
+			},
+			{
+				"name": "OrganizationId",
+				"type": "string"
+			},
+			{
+				"name": "OrganizationName",
+				"type": "string"
+			},
+			{
+				"name": "ServiceGroupId",
+				"type": "string"
+			},
+			{
+				"name": "ServiceGroupName",
+				"type": "string"
+			},
+			{
+				"name": "TeamGroupId",
+				"type": "string"
+			},
+			{
+				"name": "TeamGroupName",
+				"type": "string"
+			},
+			{
+				"name": "ParentTeamId",
+				"type": "string"
+			},
+			{
+				"name": "Metadata",
+				"type": "dynamic"
+			},
+			{
+				"name": "LastUpdated",
+				"type": "datetime"
+			}
+		],
+		"typeProperties": {
+			"table": "Teams_log"
+		}
+	}
+}

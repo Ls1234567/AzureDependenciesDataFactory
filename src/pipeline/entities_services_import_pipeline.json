@@ -1,0 +1,215 @@
+{
+	"name": "entities_services_import_pipeline",
+	"properties": {
+		"description": "Regularly import the latest list of Entities from Service Tree.",
+		"activities": [
+			{
+				"name": "Service Tree Import",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 420,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureDataExplorerSource",
+						"query": "// Import CE1 v4.0\n// Services Import from Service Tree\nlet DESTINATION_DATASET = cluster('cbmtest.westus2').database('internal').Entities_latest;\nlet serviceTreeServiceHierarchyTable = cluster('servicetreepublic.westus').database('Shared').ServiceTree_ServiceHierarchy_Snapshot;\nlet serviceTreeDataStudioServiceHierarchyTable = cluster('servicetreepublic.westus').database('Shared').DataStudio_ServiceTree_Hierarchy_Snapshot;\nlet serviceTreeServiceMetadataTable = cluster('servicetreepublic.westus').database('Shared').DataStudio_ServiceTree_ServiceMetadata_Snapshot;\nlet ecomanagerServiceMetadataTable = cluster('ecosystem').database('Ecomanager').Services;\nlet deploymentScopeLookup = ecomanagerServiceMetadataTable\n| project ServiceTreeId, DeploymentScope, Modified=LastUpdated;\nlet baseMetadataLookup = serviceTreeServiceHierarchyTable\n| project Id, Status, ShortName, IsFirstParty=IsBuiltByMicrosoft, IsExternalFacing, Admins, Modified;\nlet serviceRingLookup = serviceTreeServiceMetadataTable\n| where Type==\"ServiceRing\" and AzureCloud==\"Public\"\n| summarize arg_max(Modified,*) by ServiceId\n| extend ServiceRing=tostring(todynamic(Value).ServiceRing)\n| project Id=ServiceId,ServiceRing,Modified;\nlet serviceLifecycleStageLookup = serviceTreeServiceMetadataTable\n| where Type==\"ServiceLifecycleStage\" and AzureCloud==\"Public\"\n| summarize arg_max(Modified,*) by ServiceId\n| extend ServiceLifecycleStage=tostring(todynamic(Value).ServiceLifecycleStage)\n| project Id=ServiceId,ServiceLifecycleStage,Modified;\nlet contactDevOwnerLookup = serviceTreeServiceMetadataTable\n| where Type==\"Contact_DevOwner\" and AzureCloud==\"Public\"\n| summarize arg_max(Modified,*) by ServiceId\n| extend Contact_DevOwner=tostring(todynamic(Value).Contact_DevOwner)\n| project Id=ServiceId,Contact_DevOwner,Modified;\nlet contactPMOwnerLookup = serviceTreeServiceMetadataTable\n| where Type==\"Contact_PMOwner\" and AzureCloud==\"Public\"\n| summarize arg_max(Modified,*) by ServiceId\n| extend Contact_PMOwner=tostring(todynamic(Value).Contact_PMOwner)\n| project Id=ServiceId,Contact_PMOwner,Modified;\nlet IMPORT_DATASET = serviceTreeDataStudioServiceHierarchyTable\n| where Level in (\"Service\",\"Component\",\"MicroService\")\n// | take 500 // For testing; remove for prod\n| extend Parent=iff(Level in (\"Component\",\"MicroService\"),ServiceId,\"\")\n| extend OwningTeamId=coalesce(TeamGroupId,ServiceGroupId,OrganizationId,DivisionId)\n| project Type=Level, Id, Name, Description, Tags, Parent, OwningTeamId, ServiceId, ServiceName, Modified\n| lookup kind=leftouter baseMetadataLookup on Id\n| extend Status=iff(Status==1,\"Active\",\"NotActive\")\n| lookup kind=leftouter deploymentScopeLookup on $left.ServiceId==$right.ServiceTreeId\n| lookup kind=leftouter serviceRingLookup on Id\n| lookup kind=leftouter serviceLifecycleStageLookup on Id\n| lookup kind=leftouter contactDevOwnerLookup on Id\n| lookup kind=leftouter contactPMOwnerLookup on Id\n| project EntityId=Id,Type=Type,Name,ShortName,Tags,Status,DeploymentScope,ServiceRing,LifecycleStage=ServiceLifecycleStage, OwningTeamId, ParentEntityId=Parent, Metadata=bag_pack_columns(Description,IsFirstParty,IsExternalFacing,Admins,Contact_DevOwner,Contact_PMOwner,ServiceId,ServiceName),LastUpdated=max_of(Modified,Modified1,Modified2,Modified3,Modified4,Modified5,Modified6);\nIMPORT_DATASET\n| lookup kind=leftouter (DESTINATION_DATASET | project EntityId,ExistingRowLastUpdated=LastUpdated) on EntityId\n| where LastUpdated > ExistingRowLastUpdated or isempty(ExistingRowLastUpdated) // Only import rows which have been updated since the last corresponding import\n| project-away ExistingRowLastUpdated",
+						"queryTimeout": "01:00:00",
+						"noTruncation": true
+					},
+					"sink": {
+						"type": "AzureDataExplorerSink"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "EntityId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "EntityId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Type",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Type",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "ShortName",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "ShortName",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Tags",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Tags",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Status",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Status",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "DeploymentScope",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "DeploymentScope",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "ServiceRing",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "ServiceRing",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "LifecycleStage",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "LifecycleStage",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "OwningTeamId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "OwningTeamId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "ParentEntityId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "ParentEntityId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Metadata",
+									"type": "String",
+									"physicalType": "dynamic"
+								},
+								"sink": {
+									"name": "Metadata",
+									"type": "String",
+									"physicalType": "dynamic"
+								}
+							},
+							{
+								"source": {
+									"name": "LastUpdated",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "LastUpdated",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ServiceTreeShared",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CbmInternalEntitiesLog",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Imports/Catalog"
+		},
+		"annotations": []
+	}
+}

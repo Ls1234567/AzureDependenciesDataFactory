@@ -1,0 +1,10 @@
+{
+	"name": "CbmV4KeyVaultService",
+	"properties": {
+		"annotations": [],
+		"type": "AzureKeyVault",
+		"typeProperties": {
+			"baseUrl": "https://cbm-v4-keyvault-prod.vault.azure.net/"
+		}
+	}
+}

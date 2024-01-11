@@ -1,0 +1,25 @@
+{
+	"name": "CbmInternalConnectionService",
+	"properties": {
+		"annotations": [],
+		"type": "AzureDataExplorer",
+		"typeProperties": {
+			"endpoint": "https://cbmtest.westus2.kusto.windows.net",
+			"tenant": "72f988bf-86f1-41af-91ab-2d7cd011db47",
+			"servicePrincipalId": "a30c80ac-978f-4443-8bad-82e7acbbef48",
+			"servicePrincipalKey": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "CbmV4KeyVaultService",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "CbmV4AppRegCorpnet"
+			},
+			"database": "internal"
+		},
+		"connectVia": {
+			"referenceName": "AutoResolveIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

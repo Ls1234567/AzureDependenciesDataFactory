@@ -1,0 +1,215 @@
+{
+	"name": "entities_products_import_pipeline",
+	"properties": {
+		"description": "Regularly import the latest list of Product Entities from Service Tree.",
+		"activities": [
+			{
+				"name": "Service Tree Import",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 420,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureDataExplorerSource",
+						"query": "// Import CE2 v4.0\n// Products Import from Service Tree\nlet DESTINATION_DATASET = cluster('cbmtest.westus2').database('internal').Entities_latest;\nlet serviceTreeOfferingTable = cluster('servicetreepublic.westus').database('Shared').ServiceTree_Offering_Snapshot;\nlet serviceTreeSkuTable = cluster('servicetreepublic.westus').database('Shared').ServiceTree_ProductSku_Snapshot;\nlet serviceTreeFeatureTable = cluster('servicetreepublic.westus').database('Shared').ServiceTree_Feature_Snapshot;\nlet serviceTreeDataStudioProductHierarchyTable = cluster('servicetreepublic.westus').database('Shared').DataStudio_ServiceTree_ProductHierarchy_Snapshot;\nlet serviceTreeProductMetadataTable = cluster('servicetreepublic.westus').database('Shared').DataStudio_ServiceTree_ProductMetadata_Snapshot;\nlet baseOfferingData = serviceTreeOfferingTable\n| project Id, Status, Description, Tags, Modified;\nlet baseSkuData = serviceTreeSkuTable\n| project Id=ProductSkuId, Status=EntityState, Modified;\nlet baseFeatureData = serviceTreeFeatureTable\n| project Id=OId, Status=EntityState, Modified;\nlet offeringDeploymentScopeLookup = serviceTreeProductMetadataTable\n| where Type==\"DeploymentScope\"\n| summarize arg_max(Modified,*) by ProductId\n| extend DeploymentScope=tostring(todynamic(Value).DeploymentScope)\n| project Id=ProductId,DeploymentScope, Modified;\nlet skuDeploymentScopeLookup = serviceTreeProductMetadataTable\n| where Type==\"ProductSku_DeploymentScope\"\n| summarize arg_max(Modified,*) by ProductId\n| extend DeploymentScope=tostring(todynamic(Value).ProductSku_DeploymentScope)\n| project Id=ProductId,DeploymentScope,Modified;\nlet featureDeploymentScopeLookup = serviceTreeProductMetadataTable\n| where Type==\"Feature_DeploymentScope\"\n| summarize arg_max(Modified,*) by ProductId\n| extend DeploymentScope=tostring(todynamic(Value).Feature_DeploymentScope)\n| project Id=ProductId,DeploymentScope,Modified;\nlet offeringServiceRingLookup = serviceTreeProductMetadataTable\n| where Type==\"OfferingServiceRing\"\n| summarize arg_max(Modified,*) by ProductId\n| extend ServiceRing=tostring(todynamic(Value).OfferingServiceRing)\n| project Id=ProductId,ServiceRing,Modified;\nlet skuServiceRingLookup = serviceTreeProductMetadataTable\n| where Type==\"ProductSku_Ring\"\n| summarize arg_max(Modified,*) by ProductId\n| extend ServiceRing=tostring(todynamic(Value).ProductSku_Ring)\n| project Id=ProductId,ServiceRing,Modified;\nlet featureServiceRingLookup = serviceTreeProductMetadataTable\n| where Type==\"Feature_Ring\"\n| summarize arg_max(Modified,*) by ProductId\n| extend ServiceRing=tostring(todynamic(Value).Feature_Ring)\n| project Id=ProductId,ServiceRing,Modified;\nlet offeringLifecycleStageLookup = serviceTreeProductMetadataTable\n| where Type==\"OfferingLifecycleStage\"\n| summarize arg_max(Modified,*) by ProductId\n| extend LifecycleStage=tostring(todynamic(Value).OfferingLifecycleStage)\n| project Id=ProductId,LifecycleStage,Modified;\nlet skuLifecycleStageLookup = serviceTreeProductMetadataTable\n| where Type==\"ProductSku_LifeCycleStage\"\n| summarize arg_max(Modified,*) by ProductId\n| extend LifecycleStage=tostring(todynamic(Value).ProductSku_LifeCycleStage)\n| project Id=ProductId,LifecycleStage,Modified;\nlet featureLifecycleStageLookup = serviceTreeProductMetadataTable\n| where Type==\"Feature_LifeCycleStage\"\n| summarize arg_max(Modified,*) by ProductId\n| extend LifecycleStage=tostring(todynamic(Value).Feature_LifeCycleStage)\n| project Id=ProductId,LifecycleStage,Modified;\nlet offeringDevOwnerLookup = serviceTreeProductMetadataTable\n| where Type==\"Offering_EngineeringOwner\"\n| summarize arg_max(Modified,*) by ProductId\n| extend Contact_DevOwner=tostring(todynamic(Value).Offering_EngineeringOwner)\n| project Id=ProductId,Contact_DevOwner,Modified;\nlet skuDevOwnerLookup = serviceTreeProductMetadataTable\n| where Type==\"ProductSku_DevOwner\"\n| summarize arg_max(Modified,*) by ProductId\n| extend Contact_DevOwner=tostring(todynamic(Value).ProductSku_DevOwner)\n| project Id=ProductId,Contact_DevOwner,Modified;\nlet featureDevOwnerLookup = serviceTreeProductMetadataTable\n| where Type==\"Feature_DevOwner\"\n| summarize arg_max(Modified,*) by ProductId\n| extend Contact_DevOwner=tostring(todynamic(Value).Feature_DevOwner)\n| project Id=ProductId,Contact_DevOwner,Modified;\nlet offeringPmOwnerLookup = serviceTreeProductMetadataTable\n| where Type==\"Contact_Offering_PMOwner\"\n| summarize arg_max(Modified,*) by ProductId\n| extend Contact_PMOwner=tostring(todynamic(Value).Contact_Offering_PMOwner)\n| project Id=ProductId,Contact_PMOwner,Modified;\nlet skuPmOwnerLookup = serviceTreeProductMetadataTable\n| where Type==\"ProductSku_PMOwner\"\n| summarize arg_max(Modified,*) by ProductId\n| extend Contact_PMOwner=tostring(todynamic(Value).ProductSku_PMOwner)\n| project Id=ProductId,Contact_PMOwner,Modified;\nlet featurePmOwnerLookup = serviceTreeProductMetadataTable\n| where Type==\"Feature_PMOwner\"\n| summarize arg_max(Modified,*) by ProductId\n| extend Contact_PMOwner=tostring(todynamic(Value).Feature_PMOwner)\n| project Id=ProductId,Contact_PMOwner,Modified;\nlet IMPORT_DATASET = baseOfferingData\n// | take 100 // For testing; remove for prod\n| lookup kind=leftouter offeringDeploymentScopeLookup on Id\n| lookup kind=leftouter offeringServiceRingLookup on Id\n| lookup kind=leftouter offeringLifecycleStageLookup on Id\n| lookup kind=leftouter offeringDevOwnerLookup on Id\n| lookup kind=leftouter offeringPmOwnerLookup on Id\n| union (\nbaseSkuData\n// | take 100 // For testing; remove for prod\n| lookup kind=leftouter skuDeploymentScopeLookup on Id\n| lookup kind=leftouter skuServiceRingLookup on Id\n| lookup kind=leftouter skuLifecycleStageLookup on Id\n| lookup kind=leftouter skuDevOwnerLookup on Id\n| lookup kind=leftouter skuPmOwnerLookup on Id\n)\n| union (\nbaseFeatureData\n// | take 100 // For testing; remove for prod\n| lookup kind=leftouter featureDeploymentScopeLookup on Id\n| lookup kind=leftouter featureServiceRingLookup on Id\n| lookup kind=leftouter featureLifecycleStageLookup on Id\n| lookup kind=leftouter featureDevOwnerLookup on Id\n| lookup kind=leftouter featurePmOwnerLookup on Id\n)\n| extend Status=iff(Status==1,\"Active\",\"NotActive\")\n| lookup kind=inner serviceTreeDataStudioProductHierarchyTable on Id\n| extend ParentEntityId=iff(Type==\"ProductSku\",OfferingId,iff(Type==\"Feature\",ProductSkuId,\"\"))\n| extend LongName=iff(Type==\"ProductSku\",strcat(OfferingName,\" : \",ProductSkuName),iff(Type==\"Feature\",strcat(OfferingName,\" : \",ProductSkuName,\" : \",FeatureName),OfferingName))\n| extend Type=iff(Type==\"ProductSku\",\"Sku\",Type)\n| project EntityId=Id,Type=Type,Name=LongName,ShortName=Name,Tags,Status,DeploymentScope,ServiceRing,LifecycleStage, OwningTeamId=OrganizationId, ParentEntityId, Metadata=bag_pack_columns(Description,Contact_DevOwner,Contact_PMOwner,OfferingId,OfferingName,SkuId=ProductSkuId,SkuName=ProductSkuName),LastUpdated=max_of(Modified,Modified1,Modified2,Modified3,Modified4,Modified5,Modified6);\nIMPORT_DATASET\n| lookup kind=leftouter (DESTINATION_DATASET | project EntityId,ExistingRowLastUpdated=LastUpdated) on EntityId\n| where LastUpdated > ExistingRowLastUpdated or isempty(ExistingRowLastUpdated) // Only import rows which have been updated since the last corresponding import\n| project-away ExistingRowLastUpdated",
+						"queryTimeout": "01:00:00",
+						"noTruncation": true
+					},
+					"sink": {
+						"type": "AzureDataExplorerSink"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "EntityId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "EntityId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Type",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Type",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "ShortName",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "ShortName",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Tags",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Tags",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Status",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Status",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "DeploymentScope",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "DeploymentScope",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "ServiceRing",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "ServiceRing",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "LifecycleStage",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "LifecycleStage",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "OwningTeamId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "OwningTeamId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "ParentEntityId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "ParentEntityId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Metadata",
+									"type": "String",
+									"physicalType": "dynamic"
+								},
+								"sink": {
+									"name": "Metadata",
+									"type": "String",
+									"physicalType": "dynamic"
+								}
+							},
+							{
+								"source": {
+									"name": "LastUpdated",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "LastUpdated",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ServiceTreeShared",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CbmInternalEntitiesLog",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Imports/Catalog"
+		},
+		"annotations": []
+	}
+}

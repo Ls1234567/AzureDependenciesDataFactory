@@ -1,0 +1,12 @@
+{
+	"name": "ServiceTreeShared",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ServiceTreeImportService",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureDataExplorerTable",
+		"schema": []
+	}
+}

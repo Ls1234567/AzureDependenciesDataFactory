@@ -1,0 +1,33 @@
+{
+	"name": "ServiceTreeTeamsImportTrigger",
+	"properties": {
+		"description": "Runs the import for Teams from Service Tree",
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "teams_import_pipeline",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Day",
+				"interval": 1,
+				"startTime": "2023-12-20T23:21:00Z",
+				"timeZone": "UTC",
+				"schedule": {
+					"minutes": [
+						21
+					],
+					"hours": [
+						9
+					]
+				}
+			}
+		}
+	}
+}

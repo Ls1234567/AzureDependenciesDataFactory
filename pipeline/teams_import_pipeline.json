@@ -1,0 +1,263 @@
+{
+	"name": "teams_import_pipeline",
+	"properties": {
+		"description": "Regularly import the latest list of Teams from Service Tree.",
+		"activities": [
+			{
+				"name": "Service Tree Import",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 420,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureDataExplorerSource",
+						"query": "// Import CT1 v4.0\n// Teams Import from Service Tree\n// Run on: cluster('servicetreepublic.westus').database('Shared')\nlet DESTINATION_DATASET = cluster('cbmtest.westus2').database('internal').Teams_latest;\nlet serviceTreeServiceHierarchyTable = cluster('servicetreepublic.westus').database('Shared').ServiceTree_ServiceHierarchy_Snapshot;\nlet serviceTreeDataStudioTeamHierarchyTable = cluster('servicetreepublic.westus').database('Shared').DataStudio_ServiceTree_Hierarchy_Snapshot;\nlet serviceTreeDataStudioTeamMetadataTable = cluster('servicetreepublic.westus').database('Shared').DataStudio_ServiceTree_OrganizationCommonMetadata_Snapshot;\nlet teamStatusLookup = serviceTreeServiceHierarchyTable\n| project Id, Status, Modified;\nlet teamMetadataLookup = serviceTreeDataStudioTeamMetadataTable\n| project Id=OrganizationId,BusinessOwners=BusinessOwner;\nlet IMPORT_DATASET = serviceTreeDataStudioTeamHierarchyTable\n| where Level in (\"Division\",\"Organization\",\"ServiceGroup\",\"TeamGroup\")\n| extend ParentTeamId=iff(Level==\"TeamGroup\",ServiceGroupId,iff(Level==\"ServiceGroup\",OrganizationId,iff(Level==\"Organization\",DivisionId,\"\"))), ParentTeamName=iff(Level==\"TeamGroup\",ServiceGroupName,iff(Level==\"ServiceGroup\",OrganizationName,iff(Level==\"Organization\",DivisionName,\"\")))\n| lookup kind=leftouter teamStatusLookup on Id\n| extend Status=iff(Status==1,\"Active\",\"NotActive\")\n| lookup kind=leftouter teamMetadataLookup on Id\n| project TeamId=Id,Level,Name,BusinessOwners,Status,Tags,DivisionId,DivisionName,OrganizationId,OrganizationName,ServiceGroupId,ServiceGroupName,TeamGroupId,TeamGroupName,ParentTeamId,Metadata=bag_pack_columns(Description,ParentTeamId,ParentTeamName),LastUpdated=max_of(Modified,Modified1);\nIMPORT_DATASET\n| lookup kind=leftouter (DESTINATION_DATASET | project TeamId,ExistingRowLastUpdated=LastUpdated) on TeamId\n| where LastUpdated > ExistingRowLastUpdated or isempty(ExistingRowLastUpdated) // Only import rows which have been updated since the last corresponding import\n| project-away ExistingRowLastUpdated",
+						"queryTimeout": "01:00:00",
+						"noTruncation": true
+					},
+					"sink": {
+						"type": "AzureDataExplorerSink"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "TeamId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "TeamId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Level",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Level",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Name",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "BusinessOwners",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "BusinessOwners",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Status",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Status",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Tags",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "Tags",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "DivisionId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "DivisionId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "DivisionName",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "DivisionName",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "OrganizationId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "OrganizationId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "OrganizationName",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "OrganizationName",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "ServiceGroupId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "ServiceGroupId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "ServiceGroupName",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "ServiceGroupName",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "TeamGroupId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "TeamGroupId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "TeamGroupName",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "TeamGroupName",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "ParentTeamId",
+									"type": "String",
+									"physicalType": "string"
+								},
+								"sink": {
+									"name": "ParentTeamId",
+									"type": "String",
+									"physicalType": "string"
+								}
+							},
+							{
+								"source": {
+									"name": "Metadata",
+									"type": "String",
+									"physicalType": "dynamic"
+								},
+								"sink": {
+									"name": "Metadata",
+									"type": "String",
+									"physicalType": "dynamic"
+								}
+							},
+							{
+								"source": {
+									"name": "LastUpdated",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "LastUpdated",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ServiceTreeShared",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CbmInternalTeamsLog",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Imports/Catalog"
+		},
+		"annotations": []
+	}
+}
